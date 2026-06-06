@@ -18,3 +18,26 @@
   transition: transform .2s, outline-color .2s;
   box-shadow: 0 2px 3px #0003;
 }
+
+.panel-image {
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.panel-regenerate {
+  position: absolute;
+  z-index: 4;
+  top: 6px;
+  right: 6px;
+  opacity: 0;
+  padding: 4px 7px;
+  border-color: #111;
+  background: var(--lime);
+  color: #111;
+}
+
+.panel:hover .panel-regenerate,
+.panel.selected .panel-regenerate {
+  opacity: 1;
+}
