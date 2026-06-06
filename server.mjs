@@ -1,9 +1,10 @@
 import { createServer } from "node:http";
 import { readFile, stat } from "node:fs/promises";
-import { extname, join, normalize } from "node:path";
+import { dirname, extname, resolve, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 import { inflateRawSync } from "node:zlib";
 
-const root = new URL(".", import.meta.url).pathname;
+const root = dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PORT || 8000);
 const serverToken = process.env.NAI_API_TOKEN || "";
 const defaultModel = process.env.NAI_MODEL || "nai-diffusion-4-5-full";
@@ -110,9 +111,10 @@ async function testNovelAI(req, res) {
 
 async function staticFile(req, res) {
   const pathname = decodeURIComponent(new URL(req.url, "http://localhost").pathname);
-  const relative = pathname === "/" ? "index.html" : normalize(pathname).replace(/^(\.\.[/\\])+/, "").replace(/^[/\\]/, "");
-  const file = join(root, relative);
+  const requested = pathname === "/" ? "index.html" : pathname.replace(/^[/\\]+/, "");
+  const file = resolve(root, requested);
   try {
+    if (file !== root && !file.startsWith(`${root}${sep}`)) throw Error("Path escapes static root");
     if (!(await stat(file)).isFile()) throw Error("Not a file");
     res.writeHead(200, { "Content-Type": mime[extname(file)] || "application/octet-stream" });
     res.end(await readFile(file));

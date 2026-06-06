@@ -40,6 +40,12 @@ npm start
 NAI_API_TOKEN="your-persistent-api-token" npm start
 ```
 
+Windows PowerShell에서는 다음과 같이 실행합니다.
+
+```powershell
+$env:NAI_API_TOKEN="your-persistent-api-token"; npm start
+```
+
 앱의 `API & 설정`에서 Image provider를 `NovelAI API`로 선택합니다. 입력한 키가 있으면 환경 변수보다 우선 사용합니다. 기본 모델은 `nai-diffusion-4-5-full`이며 설정에서 변경할 수 있습니다.
 
 정적 호스팅에서 앱을 연 경우 `/api/nai/*` 프록시가 없으므로 별도로 `npm start`를 실행하고 `NovelAI proxy URL`에 해당 서버 주소(예: `http://localhost:8000`)를 입력해야 합니다. 같은 Node 서버에서 앱을 열었다면 proxy URL은 비워둡니다.
