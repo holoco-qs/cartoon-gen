@@ -53,6 +53,11 @@ $env:NAI_API_TOKEN="your-persistent-api-token"; npm start
 - `NAI Generate`: 아직 이미지가 없는 모든 컷을 순차 생성합니다.
 - `이 컷 이미지 재생성`: 선택한 만화 컷의 이미지를 즉시 새 결과로 교체합니다.
 - 컷 위의 `↻` 버튼: Editor 또는 Preview의 만화 영역에서 해당 컷을 바로 재생성합니다.
-- 생성 크기는 컷의 가로세로 비율에 맞춰 자동 선택되고, 결과 이미지는 컷 영역을 왜곡 없이 채우도록 중앙 크롭됩니다.
+- 생성 크기는 컷의 가로세로 비율에 맞춰 자동 선택됩니다. 기본 `전체 보기` 모드는 원본을 자르지 않고 흐린 배경 위에 맞추며, 컷별로 `컷 채우기` 중앙 크롭을 선택할 수 있습니다.
+- NovelAI 생성 해상도는 `832×1216`, `896×1152`, `960×1088`, `1024×1024`, `1088×960`, `1152×896`, `1216×832`의 7개 옵션 중 선택하며, 모든 컷 레이아웃은 선택한 비율에 맞게 보정됩니다.
+- 각 컷은 별도 positive/negative prompt와 최대 5개의 Vibe Transfer 이미지를 사용할 수 있습니다. Vibe strength, information extracted, 정규화를 컷별로 설정합니다.
+- 캐릭터 프로필의 positive/negative prompt와 X/Y 위치는 선택된 컷의 NAI v4 character caption으로 전달됩니다.
 
 서버는 공식 NovelAI 이미지 생성 엔드포인트 `https://image.novelai.net/ai/generate-image`를 사용합니다. 토큰을 프로젝트 파일이나 저장소에 커밋하지 마세요.
+
+NovelAI 요청 구조는 `comfyui-naia-bridge`가 연동하는 NAIA 2.0의 생성 방식에 맞춰 구성합니다. 메인/네거티브 프롬프트, v4 캐릭터 caption/위치, Vibe Transfer reference와 strength를 컷별 생성 요청에 함께 전달합니다.

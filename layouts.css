@@ -20,9 +20,36 @@
 }
 
 .panel-image {
+  background: #ddd;
+}
+
+.panel-image-blur,
+.panel-image-main {
+  position: absolute;
+  inset: 0;
   background-position: center;
   background-repeat: no-repeat;
+}
+
+.panel-image-blur {
+  inset: -10%;
   background-size: cover;
+  filter: blur(12px);
+  opacity: .38;
+  transform: scale(1.05);
+}
+
+.panel-image-main {
+  z-index: 1;
+  background-size: contain;
+}
+
+.panel-image.fit-cover .panel-image-main {
+  background-size: cover;
+}
+
+.panel-image.fit-cover .panel-image-blur {
+  display: none;
 }
 
 .panel-regenerate {
@@ -40,4 +67,55 @@
 .panel:hover .panel-regenerate,
 .panel.selected .panel-regenerate {
   opacity: 1;
+}
+
+.char-position,
+.vibe-controls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.char-position label,
+.vibe-controls label {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.char-position input,
+.vibe-controls input[type="number"] {
+  width: 58px;
+  padding: 5px;
+}
+
+.vibe-controls > input[type="file"] {
+  min-width: 0;
+  padding: 6px;
+}
+
+.vibe-list {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 5px;
+  margin-top: 7px;
+}
+
+.vibe-item {
+  position: relative;
+  aspect-ratio: 1;
+  background-position: center;
+  background-size: cover;
+  border: 1px solid var(--line);
+}
+
+.vibe-item button {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  padding: 1px 4px;
+  background: #111d;
 }

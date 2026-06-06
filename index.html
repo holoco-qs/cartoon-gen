@@ -41,7 +41,7 @@
         <label class="field-title">모드</label><select id="mode"><option>Manga</option><option>Webtoon</option></select>
         <div class="two-col"><label>페이지<input type="number" id="pages" min="1" max="10" value="2"></label><label>페이지당 목표 컷<input type="number" id="panelRange" min="2" max="8" value="4"></label></div>
         <label class="field-title">읽기 방향</label><div class="segmented" id="readOrder"><button data-value="rtl" class="active">오른쪽 → 왼쪽</button><button data-value="ltr">왼쪽 → 오른쪽</button></div>
-        <label class="field-title">생성 이미지 비율</label><select id="imageRatio"><option value="portrait">2:3 세로</option><option value="square">1:1 정사각</option><option value="landscape">3:2 가로</option></select>
+        <label class="field-title">NovelAI 생성 해상도</label><select id="imageRatio"><option value="832x1216">832 × 1216</option><option value="896x1152">896 × 1152</option><option value="960x1088">960 × 1088</option><option value="1024x1024">1024 × 1024</option><option value="1088x960">1088 × 960</option><option value="1152x896">1152 × 896</option><option value="1216x832">1216 × 832</option></select>
         <label class="field-title">패널 생성 간격</label><select id="interval"><option value="250">빠른 데모</option><option value="800">1초</option><option value="2000">2초</option></select>
         <p class="help">권장: Manga 2페이지, 페이지당 4~7컷</p>
       </section>
@@ -70,6 +70,11 @@
         <label class="field-title">대사 / 내레이션</label><textarea class="compact" id="panelDialogue"></textarea>
         <label class="field-title">캐릭터</label><div id="panelCharacters" class="checks"></div>
         <label class="field-title">이미지 프롬프트</label><textarea id="panelImagePrompt"></textarea>
+        <label class="field-title">컷 네거티브 프롬프트</label><textarea class="compact" id="panelNegativePrompt" placeholder="이 컷에만 추가할 negative prompt"></textarea>
+        <label class="field-title">이미지 맞춤</label><select id="panelImageFit"><option value="contain">전체 보기 (권장)</option><option value="cover">컷 채우기 (크롭)</option></select>
+        <label class="field-title">VIBE TRANSFER (최대 5개)</label>
+        <div class="vibe-controls"><input id="panelVibeFiles" type="file" accept="image/*" multiple><label>강도<input id="panelVibeStrength" type="number" min="-1" max="1" step="0.05" value="0.6"></label><label>정보 추출<input id="panelVibeInformation" type="number" min="0" max="1" step="0.05" value="1"></label><label><input id="panelVibeNormalize" type="checkbox" checked> 정규화</label></div>
+        <div id="panelVibeList" class="vibe-list"></div>
         <button class="wide" id="savePanel">변경 적용</button>
         <button class="wide accent" id="generatePanel">✦ 이 컷 이미지 생성</button>
         <div class="reference-box"><b>REFERENCE IMAGE</b><span>클릭하거나 이미지를 드롭하세요</span><input id="referenceFile" type="file" accept="image/*"></div>
@@ -79,7 +84,7 @@
 
   <dialog id="settingsDialog"><form method="dialog"><div class="dialog-head"><h3>API & Settings</h3><button value="cancel">×</button></div><p>API 키는 현재 브라우저 탭의 <code>sessionStorage</code>에만 저장됩니다.</p><label>Gemini API Key<input id="apiKey" type="password" placeholder="Gemini API key"></label><label>Text model<input id="textModel" value="gemini-2.5-flash"></label><label>Image provider<select id="imageProvider"><option value="simulation">Simulation</option><option value="novelai">NovelAI API</option></select></label><label>NovelAI API Key<input id="naiApiKey" type="password" placeholder="NovelAI persistent API token"></label><label>NovelAI proxy URL<input id="naiProxyUrl" placeholder="Same origin, or e.g. http://localhost:8000"></label><label>NovelAI image model<input id="naiModel" value="nai-diffusion-4-5-full"></label><div id="apiTestResult" class="api-test-result"></div><menu><button type="button" id="testApi">연결 테스트</button><button value="cancel">취소</button><button value="default" id="saveSettings" class="accent">저장</button></menu></form></dialog>
 
-  <template id="characterTemplate"><article class="character-card"><div class="avatar">?</div><div><input class="char-name" placeholder="이름"><textarea class="char-desc compact" placeholder="외형, 의상, 성격"></textarea></div><button class="remove-char">×</button></article></template>
-  <template id="panelTemplate"><article class="panel"><div class="panel-image"><span class="panel-index"></span><button class="panel-regenerate" title="이 컷 이미지 재생성">↻</button><div class="placeholder"><b>IMAGE</b><small>READY</small></div><div class="panel-state"></div></div><div class="speech"></div><footer><b class="panel-name"></b><span class="panel-camera"></span></footer></article></template>
+  <template id="characterTemplate"><article class="character-card"><div class="avatar">?</div><div><input class="char-name" placeholder="이름"><textarea class="char-desc compact" placeholder="NAI character positive prompt"></textarea><textarea class="char-negative compact" placeholder="Character negative prompt"></textarea><div class="char-position"><label>X<input class="char-x" type="number" min="0" max="1" step="0.1" value="0.5"></label><label>Y<input class="char-y" type="number" min="0" max="1" step="0.1" value="0.5"></label></div></div><button class="remove-char">×</button></article></template>
+  <template id="panelTemplate"><article class="panel"><div class="panel-image"><div class="panel-image-blur"></div><div class="panel-image-main"></div><span class="panel-index"></span><button class="panel-regenerate" title="이 컷 이미지 재생성">↻</button><div class="placeholder"><b>IMAGE</b><small>READY</small></div><div class="panel-state"></div></div><div class="speech"></div><footer><b class="panel-name"></b><span class="panel-camera"></span></footer></article></template>
   <script src="app.js"></script>
 </body></html>
