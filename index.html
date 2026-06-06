@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>TOONIT Manga Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="layouts.css">
+</head>
+<body>
+  <header>
+    <div class="brand"><b>T!</b><span>TOONIT</span><i>MANGA LAB</i></div>
+    <div class="project-name"><span class="online"></span><input id="projectTitle" value="달을 찾는 탐정"><small id="saveState">자동 저장됨</small></div>
+    <div class="header-actions"><button id="newProject">새 프로젝트</button><button id="openSettings">API & 설정</button><button class="strong" id="downloadJson">JSON 내보내기</button></div>
+  </header>
+
+  <main>
+    <aside class="left-pane">
+      <div class="tabs"><button class="active" data-tab="script">원고</button><button data-tab="characters">캐릭터</button><button data-tab="settings">설정</button></div>
+      <section class="tab-panel active" id="scriptTab">
+        <div class="section-head"><span>01 · MANGA PROMPT</span><button id="uploadJson">JSON 업로드</button><input type="file" id="jsonFile" accept=".json" hidden></div>
+        <textarea id="mangaPrompt" placeholder="만화의 줄거리, 장면 또는 대사를 입력하세요.">비 오는 밤, 퇴근하던 고양이 탐정 모카가 수상한 편지를 발견한다. 편지에는 사라진 달을 찾아달라는 의뢰가 적혀 있다. 모카는 달빛 가루의 흔적을 따라 옥상으로 향하고, 도시 지하에 갇힌 달을 발견한다.</textarea>
+        <div class="prompt-meta"><span id="promptCount">0자</span><button id="summarize">✦ 요약</button></div>
+        <label class="field-title">스타일 / 공통 프롬프트</label>
+        <textarea class="compact" id="basePrompt">masterpiece, monochrome manga, detailed ink lines, cinematic composition, consistent character design</textarea>
+        <label class="field-title">네거티브 프롬프트</label>
+        <textarea class="compact" id="negativePrompt">low quality, bad anatomy, extra limbs, text, watermark, inconsistent character</textarea>
+        <div class="mode-buttons"><button id="geminiLite">Gemini Lite</button><button class="accent" id="geminiDeep">✦ Gemini Deep</button></div>
+        <div class="message-log" id="messageLog"><div class="system-msg">원고를 분석하면 Gemini가 페이지 구성, 컷 형태와 기울기, 연출 프롬프트를 함께 설계합니다.</div></div>
+      </section>
+
+      <section class="tab-panel" id="charactersTab">
+        <div class="section-head"><span>CHARACTER PROFILES</span><button id="addCharacter">+ 추가</button></div>
+        <div id="characterList"></div>
+        <p class="help">캐릭터 설명은 모든 해당 컷의 이미지 프롬프트에 자동으로 포함됩니다.</p>
+      </section>
+
+      <section class="tab-panel" id="settingsTab">
+        <div class="section-head"><span>PARAMETER SETTINGS</span></div>
+        <label class="field-title">모드</label><select id="mode"><option>Manga</option><option>Webtoon</option></select>
+        <div class="two-col"><label>페이지<input type="number" id="pages" min="1" max="10" value="2"></label><label>페이지당 목표 컷<input type="number" id="panelRange" min="2" max="8" value="4"></label></div>
+        <label class="field-title">읽기 방향</label><div class="segmented" id="readOrder"><button data-value="rtl" class="active">오른쪽 → 왼쪽</button><button data-value="ltr">왼쪽 → 오른쪽</button></div>
+        <label class="field-title">생성 이미지 비율</label><select id="imageRatio"><option value="portrait">2:3 세로</option><option value="square">1:1 정사각</option><option value="landscape">3:2 가로</option></select>
+        <label class="field-title">패널 생성 간격</label><select id="interval"><option value="250">빠른 데모</option><option value="800">1초</option><option value="2000">2초</option></select>
+        <p class="help">권장: Manga 2페이지, 페이지당 4~7컷</p>
+      </section>
+    </aside>
+
+    <section class="stage">
+      <div class="stage-toolbar">
+        <div><button class="view active" data-view="editor">Editor</button><button class="view" data-view="preview">Preview</button></div>
+        <div class="page-nav"><button id="prevPage">←</button><b id="pageLabel">Page 1 / 1</b><button id="nextPage">→</button></div>
+        <div><button id="newLayout">다른 레이아웃</button><button class="generate-all" id="generateAll">▶ NAI Generate</button></div>
+      </div>
+      <div class="empty-state" id="emptyState"><div class="empty-sheet"><span>✦</span></div><h2>아직 레이아웃이 없습니다</h2><p>Gemini Lite 또는 Deep으로 원고를 컷별로 구성하세요.</p></div>
+      <div class="canvas-wrap hidden" id="canvasWrap"><div class="manga-page" id="mangaPage"></div></div>
+      <div class="preview-wrap hidden" id="previewWrap"></div>
+      <div class="queue-bar hidden" id="queueBar"><span class="spinner"></span><b id="queueText">생성 준비 중</b><div><i id="queueProgress"></i></div><button id="stopQueue">중지</button></div>
+      <div class="history"><div class="section-head"><span>MANGA LAYOUT HISTORY</span><button id="clearHistory">비우기</button></div><div id="historyList"><p class="help">레이아웃 세션과 패널별 생성 상태가 여기에 저장됩니다.</p></div></div>
+    </section>
+
+    <aside class="right-pane">
+      <div class="inspector-empty" id="inspectorEmpty"><b>컷을 선택하세요</b><span>장면, 대사, 이미지 프롬프트를 편집할 수 있습니다.</span></div>
+      <div class="inspector hidden" id="inspector">
+        <div class="section-head"><span id="panelBadge">PANEL 01</span><button id="deletePanel">삭제</button></div>
+        <label class="field-title">장면 제목</label><input id="panelTitle">
+        <label class="field-title">연출 / 카메라</label><input id="panelShot">
+        <label class="field-title">장면 설명</label><textarea id="panelDescription"></textarea>
+        <label class="field-title">대사 / 내레이션</label><textarea class="compact" id="panelDialogue"></textarea>
+        <label class="field-title">캐릭터</label><div id="panelCharacters" class="checks"></div>
+        <label class="field-title">이미지 프롬프트</label><textarea id="panelImagePrompt"></textarea>
+        <button class="wide" id="savePanel">변경 적용</button>
+        <button class="wide accent" id="generatePanel">✦ 이 컷 이미지 생성</button>
+        <div class="reference-box"><b>REFERENCE IMAGE</b><span>클릭하거나 이미지를 드롭하세요</span><input id="referenceFile" type="file" accept="image/*"></div>
+      </div>
+    </aside>
+  </main>
+
+  <dialog id="settingsDialog"><form method="dialog"><div class="dialog-head"><h3>API & Settings</h3><button value="cancel">×</button></div><p>키 접두사는 검사하지 않습니다. AIza, AQ 등 어떤 문자열도 전송하며 실제 Gemini API 권한 여부는 연결 테스트로 확인합니다.</p><label>Gemini API Key<input id="apiKey" type="password" placeholder="Gemini API key"></label><label>Text model<input id="textModel" value="gemini-2.5-flash"></label><label>Image provider<select id="imageProvider"><option>Simulation</option><option>NovelAI API (server required)</option><option>Gemini Image (server required)</option></select></label><div id="apiTestResult" class="api-test-result"></div><menu><button type="button" id="testApi">연결 테스트</button><button value="cancel">취소</button><button value="default" id="saveSettings" class="accent">저장</button></menu></form></dialog>
+
+  <template id="characterTemplate"><article class="character-card"><div class="avatar">?</div><div><input class="char-name" placeholder="이름"><textarea class="char-desc compact" placeholder="외형, 의상, 성격"></textarea></div><button class="remove-char">×</button></article></template>
+  <template id="panelTemplate"><article class="panel"><div class="panel-image"><span class="panel-index"></span><div class="placeholder"><b>IMAGE</b><small>READY</small></div><div class="panel-state"></div></div><div class="speech"></div><footer><b class="panel-name"></b><span class="panel-camera"></span></footer></article></template>
+  <script src="app.js"></script>
+</body></html>
