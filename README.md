@@ -32,17 +32,19 @@ npm start
 
 ## NovelAI 이미지 생성
 
-NovelAI 토큰은 브라우저에 전달하지 않고 로컬 서버 환경 변수로 설정합니다.
+앱의 `API & 설정`에서 `NovelAI API Key`에 persistent API token을 입력하면 현재 브라우저 탭의 `sessionStorage`에만 저장되며 이미지 생성 요청에 사용됩니다.
+
+서버 환경 변수로 설정해 공용 기본 키를 사용할 수도 있습니다.
 
 ```bash
 NAI_API_TOKEN="your-persistent-api-token" npm start
 ```
 
-앱의 `API & 설정`에서 Image provider를 `NovelAI API`로 선택합니다. 기본 모델은 `nai-diffusion-4-5-full`이며 설정에서 변경할 수 있습니다.
+앱의 `API & 설정`에서 Image provider를 `NovelAI API`로 선택합니다. 입력한 키가 있으면 환경 변수보다 우선 사용합니다. 기본 모델은 `nai-diffusion-4-5-full`이며 설정에서 변경할 수 있습니다.
 
 - `NAI Generate`: 아직 이미지가 없는 모든 컷을 순차 생성합니다.
 - `이 컷 이미지 재생성`: 선택한 만화 컷의 이미지를 즉시 새 결과로 교체합니다.
 - 컷 위의 `↻` 버튼: Editor 또는 Preview의 만화 영역에서 해당 컷을 바로 재생성합니다.
 - 생성 크기는 컷의 가로세로 비율에 맞춰 자동 선택되고, 결과 이미지는 컷 영역을 왜곡 없이 채우도록 중앙 크롭됩니다.
 
-서버는 공식 NovelAI 이미지 생성 엔드포인트 `https://image.novelai.net/ai/generate-image`를 사용합니다. 토큰을 `.env`나 저장소 파일에 커밋하지 마세요.
+서버는 공식 NovelAI 이미지 생성 엔드포인트 `https://image.novelai.net/ai/generate-image`를 사용합니다. 토큰을 프로젝트 파일이나 저장소에 커밋하지 마세요.

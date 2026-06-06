@@ -5,7 +5,7 @@ import { inflateRawSync } from "node:zlib";
 
 const root = new URL(".", import.meta.url).pathname;
 const port = Number(process.env.PORT || 8000);
-const token = process.env.NAI_API_TOKEN || "";
+const serverToken = process.env.NAI_API_TOKEN || "";
 const defaultModel = process.env.NAI_MODEL || "nai-diffusion-4-5-full";
 const mime = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".png": "image/png" };
 
@@ -47,8 +47,9 @@ function firstZipFile(zip) {
 }
 
 async function generate(req, res) {
-  if (!token) return json(res, 503, { error: "NAI_API_TOKEN is not configured on the server" });
   const input = await body(req);
+  const token = String(input.apiKey || serverToken).trim();
+  if (!token) return json(res, 503, { error: "NovelAI API key is not configured" });
   const width = Math.max(512, Math.min(1536, Math.round(Number(input.width) / 64) * 64 || 832));
   const height = Math.max(512, Math.min(1536, Math.round(Number(input.height) / 64) * 64 || 1216));
   const seed = Number.isInteger(input.seed) ? input.seed : Math.floor(Math.random() * 4_294_967_295);
@@ -94,6 +95,19 @@ async function generate(req, res) {
   res.end(image);
 }
 
+async function testNovelAI(req, res) {
+  const input = await body(req);
+  const token = String(input.apiKey || serverToken).trim();
+  if (!token) return json(res, 400, { error: "NovelAI API key is not configured" });
+  const upstream = await fetch("https://api.novelai.net/user/subscription", {
+    headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" }
+  });
+  const response = await upstream.text();
+  if (!upstream.ok) return json(res, upstream.status, { error: response.slice(0, 1000) || `NovelAI authentication failed (${upstream.status})` });
+  const subscription = JSON.parse(response);
+  json(res, 200, { ok: true, tier: subscription.tier ?? null, active: subscription.active ?? true });
+}
+
 async function staticFile(req, res) {
   const pathname = decodeURIComponent(new URL(req.url, "http://localhost").pathname);
   const relative = pathname === "/" ? "index.html" : normalize(pathname).replace(/^(\.\.[/\\])+/, "").replace(/^[/\\]/, "");
@@ -109,7 +123,8 @@ async function staticFile(req, res) {
 
 createServer(async (req, res) => {
   try {
-    if (req.method === "GET" && req.url === "/api/nai/status") return json(res, 200, { configured: Boolean(token), model: defaultModel });
+    if (req.method === "GET" && req.url === "/api/nai/status") return json(res, 200, { configured: Boolean(serverToken), model: defaultModel });
+    if (req.method === "POST" && req.url === "/api/nai/test") return await testNovelAI(req, res);
     if (req.method === "POST" && req.url === "/api/nai/generate") return await generate(req, res);
     if (req.method === "GET" || req.method === "HEAD") return await staticFile(req, res);
     json(res, 405, { error: "Method not allowed" });
