@@ -55,6 +55,49 @@ const bounded = (value, min, max, fallback) => {
 };
 
 const rawBase64 = value => String(value || "").replace(/^data:image\/[^;]+;base64,/, "");
+const modelNames = {
+  "NAID4.5F": "nai-diffusion-4-5-full",
+  "NAID4.5C": "nai-diffusion-4-5-curated",
+  "NAID4.0F": "nai-diffusion-4-full",
+  "NAID4.0C": "nai-diffusion-4-curated-preview",
+  NAID3: "nai-diffusion-3"
+};
+const samplers = new Set(["k_euler", "k_euler_ancestral", "k_dpmpp_2m", "k_dpmpp_2s_ancestral", "k_dpmpp_sde", "k_dpmpp_2m_sde", "ddim_v3"]);
+const schedules = new Set(["native", "karras", "exponential", "polyexponential"]);
+
+function cleanPromptAndOverrides(value, defaults) {
+  const output = { ...defaults }, tags = [];
+  for (const raw of String(value || "").split(",")) {
+    const tag = raw.replace(/\r?\n/g, "").trim();
+    if (!tag || tag.startsWith("#")) continue;
+    let match;
+    if ((match = tag.match(/^seed:\s*(\d+)$/i))) output.seed = Number(match[1]);
+    else if ((match = tag.match(/^resolution:\s*(\d+)\s*x\s*(\d+)$/i))) [output.width, output.height] = [Number(match[1]), Number(match[2])];
+    else if ((match = tag.match(/^cfg_scale:\s*([\d.]+)$/i))) output.scale = bounded(match[1], 1, 10, output.scale);
+    else if ((match = tag.match(/^cfg_rescale:\s*(-?[\d.]+)$/i))) output.cfgRescale = bounded(match[1], -1, 1, output.cfgRescale);
+    else if ((match = tag.match(/^steps:\s*(\d+)$/i))) output.steps = bounded(match[1], 1, 150, output.steps);
+    else if ((match = tag.match(/^sampler:\s*(\S+)$/i)) && samplers.has(match[1])) output.sampler = match[1];
+    else if ((match = tag.match(/^scheduler:\s*(\S+)$/i)) && schedules.has(match[1])) output.schedule = match[1];
+    else tags.push(tag);
+  }
+  output.prompt = tags.join(", ");
+  return output;
+}
+
+async function novelFetch(token, payload) {
+  let response;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    response = await fetch("https://image.novelai.net/ai/generate-image", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json", "Accept": "application/zip,image/png" },
+      body: JSON.stringify(payload)
+    });
+    if (![502, 503, 504, 520].includes(response.status) || attempt === 3) return response;
+    await response.arrayBuffer();
+    await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+  }
+  return response;
+}
 
 async function encodeVibes(token, images, model, informationExtracted) {
   return Promise.all(images.map(async image => {
@@ -78,15 +121,27 @@ async function generate(req, res) {
   const input = await body(req);
   const token = String(input.apiKey || serverToken).trim();
   if (!token) return json(res, 503, { error: "NovelAI API key is not configured" });
-  const width = Math.max(512, Math.min(1536, Math.round(Number(input.width) / 64) * 64 || 832));
-  const height = Math.max(512, Math.min(1536, Math.round(Number(input.height) / 64) * 64 || 1216));
-  const seed = Number.isInteger(input.seed) ? input.seed : Math.floor(Math.random() * 4_294_967_295);
-  const prompt = String(input.prompt || "").slice(0, 8000);
+  const initialSeed = Number.isInteger(input.seed) && input.seed >= 0 ? input.seed : Math.floor(Math.random() * 4_294_967_295);
+  const settings = cleanPromptAndOverrides(input.prompt, {
+    width: Number(input.width) || 832,
+    height: Number(input.height) || 1216,
+    seed: initialSeed,
+    scale: bounded(input.scale, 1, 10, 5),
+    cfgRescale: bounded(input.cfgRescale, -1, 1, .4),
+    steps: bounded(input.steps, 1, 150, 28),
+    sampler: samplers.has(input.sampler) ? input.sampler : "k_euler_ancestral",
+    schedule: schedules.has(input.schedule) ? input.schedule : "native"
+  });
+  const width = Math.max(512, Math.min(1536, Math.round(settings.width / 64) * 64 || 832));
+  const height = Math.max(512, Math.min(1536, Math.round(settings.height / 64) * 64 || 1216));
+  const seed = settings.seed;
+  const prompt = settings.prompt.slice(0, 8000);
   const negativePrompt = String(input.negativePrompt || "").slice(0, 4000);
   const characters = Array.isArray(input.characters) ? input.characters.slice(0, 5) : [];
   const vibeImages = Array.isArray(input.vibes) ? input.vibes.slice(0, 5).map(rawBase64).filter(Boolean) : [];
   const vibeInformation = bounded(input.vibeInformation, 0, 1, 1);
-  const vibes = await encodeVibes(token, vibeImages, String(input.model || defaultModel), vibeInformation);
+  const model = modelNames[input.model] || String(input.model || defaultModel);
+  const vibes = await encodeVibes(token, vibeImages, model, vibeInformation);
   let vibeStrengths = vibes.map(() => bounded(input.vibeStrength, -1, 1, .6));
   const vibeNormalize = input.vibeNormalize !== false;
   const vibeTotal = vibeStrengths.reduce((sum, value) => sum + value, 0);
@@ -98,45 +153,68 @@ async function generate(req, res) {
   })).filter(character => character.prompt);
   const charCaptions = characterRecords.map(character => ({ char_caption: character.prompt, centers: character.centers }));
   const charNegativeCaptions = characterRecords.map(character => ({ char_caption: character.negative, centers: character.centers }));
+  const initImage = rawBase64(input.initImage);
+  const preciseReferences = Array.isArray(input.preciseReferences) ? input.preciseReferences.slice(0, 5).map(reference => ({
+    image: rawBase64(reference.image),
+    description: String(reference.description || "").slice(0, 2000),
+    strength: bounded(reference.strength, 0, 1, .6),
+    fidelity: bounded(reference.fidelity, 0, 1, .5),
+    information: bounded(reference.information, 0, 1, 1)
+  })).filter(reference => reference.image) : [];
+  const action = initImage ? "img2img" : "generate";
   const payload = {
     input: prompt,
-    model: String(input.model || defaultModel),
-    action: "generate",
+    model,
+    action,
     parameters: {
       params_version: 3,
       width,
       height,
-      scale: 5,
-      sampler: "k_euler_ancestral",
-      steps: 28,
+      scale: settings.scale,
+      sampler: settings.sampler,
+      steps: settings.steps,
       n_samples: 1,
       extra_noise_seed: seed,
       ucPreset: 0,
       qualityToggle: true,
       negative_prompt: negativePrompt,
       seed,
-      noise_schedule: "native",
+      noise_schedule: settings.schedule,
       legacy: false,
       legacy_uc: false,
       legacy_v3_extend: false,
       add_original_image: true,
       autoSmea: true,
       prefer_brownian: true,
-      cfg_rescale: .4,
+      cfg_rescale: settings.cfgRescale,
       v4_prompt: { caption: { base_caption: prompt, char_captions: charCaptions }, use_coords: false, use_order: true },
       v4_negative_prompt: { caption: { base_caption: negativePrompt, char_captions: charNegativeCaptions }, legacy_uc: false }
     }
   };
+  if (input.varPlus === true) payload.parameters.skip_cfg_above_sigma = model.includes("4-5") ? 58 : 19;
+  if (initImage) {
+    payload.parameters.image = initImage;
+    payload.parameters.strength = bounded(input.img2imgStrength, 0, 1, .5);
+    payload.parameters.noise = bounded(input.img2imgNoise, 0, 1, .05);
+  }
   if (vibes.length) {
     payload.parameters.normalize_reference_strength_multiple = vibeNormalize;
     payload.parameters.reference_image_multiple = vibes;
     payload.parameters.reference_strength_multiple = vibeStrengths;
+    if (model === "nai-diffusion-3") payload.parameters.reference_information_extracted_multiple = vibes.map(() => vibeInformation);
   }
-  const upstream = await fetch("https://image.novelai.net/ai/generate-image", {
-    method: "POST",
-    headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json", "Accept": "application/zip,image/png" },
-    body: JSON.stringify(payload)
-  });
+  if (preciseReferences.length && model.includes("4-5")) {
+    delete payload.parameters.skip_cfg_above_sigma;
+    payload.parameters.director_reference_descriptions = preciseReferences.map(reference => reference.description);
+    payload.parameters.director_reference_images = preciseReferences.map(reference => reference.image);
+    payload.parameters.director_reference_information_extracted = preciseReferences.map(reference => reference.information);
+    payload.parameters.director_reference_secondary_strength_values = preciseReferences.map(reference => reference.fidelity);
+    payload.parameters.director_reference_strength_values = preciseReferences.map(reference => reference.strength);
+    payload.parameters.controlnet_strength = 1;
+    payload.parameters.inpaintImg2ImgStrength = 1;
+    payload.parameters.normalize_reference_strength_multiple = true;
+  }
+  const upstream = await novelFetch(token, payload);
   const response = Buffer.from(await upstream.arrayBuffer());
   if (!upstream.ok) {
     const message = response.toString("utf8").slice(0, 1000);

@@ -26,6 +26,10 @@
         <textarea class="compact" id="basePrompt">masterpiece, monochrome manga, detailed ink lines, cinematic composition, consistent character design</textarea>
         <label class="field-title">네거티브 프롬프트</label>
         <textarea class="compact" id="negativePrompt">low quality, bad anatomy, extra limbs, text, watermark, inconsistent character</textarea>
+        <label class="field-title">이미지로 스토리 작성</label>
+        <textarea class="compact" id="imageStoryInstruction" placeholder="예: 이미지 순서대로 미스터리 만화로 구성하고 자연스러운 대사를 작성해줘"></textarea>
+        <div class="image-story-actions"><input id="storyImageFiles" type="file" accept="image/*" multiple><button id="usePanelImages">현재 컷 이미지 가져오기</button><button class="accent" id="generateImageStory">✦ 이미지 스토리 생성</button></div>
+        <div id="storyImageList" class="story-image-list"><p class="help">최대 12개 이미지가 순서대로 Gemini에 전달됩니다.</p></div>
         <div class="mode-buttons"><button id="geminiLite">Gemini Lite</button><button class="accent" id="geminiDeep">✦ Gemini Deep</button></div>
         <div class="message-log" id="messageLog"><div class="system-msg">원고를 분석하면 Gemini가 페이지 구성, 컷 형태와 기울기, 연출 프롬프트를 함께 설계합니다.</div></div>
       </section>
@@ -42,6 +46,10 @@
         <div class="two-col"><label>페이지<input type="number" id="pages" min="1" max="10" value="2"></label><label>페이지당 목표 컷<input type="number" id="panelRange" min="2" max="8" value="4"></label></div>
         <label class="field-title">읽기 방향</label><div class="segmented" id="readOrder"><button data-value="rtl" class="active">오른쪽 → 왼쪽</button><button data-value="ltr">왼쪽 → 오른쪽</button></div>
         <label class="field-title">NovelAI 생성 해상도</label><select id="imageRatio"><option value="832x1216">832 × 1216</option><option value="896x1152">896 × 1152</option><option value="960x1088">960 × 1088</option><option value="1024x1024">1024 × 1024</option><option value="1088x960">1088 × 960</option><option value="1152x896">1152 × 896</option><option value="1216x832">1216 × 832</option></select>
+        <label class="field-title">NAIA 생성 설정</label>
+        <div class="two-col"><label>Sampler<select id="naiSampler"><option value="k_euler_ancestral">Euler Ancestral</option><option value="k_euler">Euler</option><option value="k_dpmpp_2m">DPM++ 2M</option><option value="k_dpmpp_2s_ancestral">DPM++ 2S Ancestral</option><option value="k_dpmpp_sde">DPM++ SDE</option><option value="k_dpmpp_2m_sde">DPM++ 2M SDE</option><option value="ddim_v3">DDIM</option></select></label><label>Scheduler<select id="naiSchedule"><option value="native">Native</option><option value="karras">Karras</option><option value="exponential">Exponential</option><option value="polyexponential">Polyexponential</option></select></label></div>
+        <div class="nai-number-grid"><label>Steps<input id="naiSteps" type="number" min="1" max="150" value="28"></label><label>CFG<input id="naiScale" type="number" min="1" max="10" step="0.1" value="5"></label><label>CFG Rescale<input id="naiCfgRescale" type="number" min="-1" max="1" step="0.05" value="0.4"></label></div>
+        <label class="check-row"><input id="naiVarPlus" type="checkbox"> VAR+ 사용</label>
         <label class="field-title">패널 생성 간격</label><select id="interval"><option value="250">빠른 데모</option><option value="800">1초</option><option value="2000">2초</option></select>
         <p class="help">권장: Manga 2페이지, 페이지당 4~7컷</p>
       </section>
@@ -75,6 +83,13 @@
         <label class="field-title">VIBE TRANSFER (최대 5개)</label>
         <div class="vibe-controls"><input id="panelVibeFiles" type="file" accept="image/*" multiple><label>강도<input id="panelVibeStrength" type="number" min="-1" max="1" step="0.05" value="0.6"></label><label>정보 추출<input id="panelVibeInformation" type="number" min="0" max="1" step="0.05" value="1"></label><label><input id="panelVibeNormalize" type="checkbox" checked> 정규화</label></div>
         <div id="panelVibeList" class="vibe-list"></div>
+        <label class="field-title">IMG2IMG</label>
+        <label class="check-row"><input id="panelUseImg2Img" type="checkbox"> 현재 컷 이미지를 재생성 입력으로 사용</label>
+        <div class="nai-number-grid"><label>Strength<input id="panelImg2ImgStrength" type="number" min="0" max="1" step="0.05" value="0.5"></label><label>Noise<input id="panelImg2ImgNoise" type="number" min="0" max="1" step="0.05" value="0.05"></label></div>
+        <label class="field-title">PRECISE REFERENCE · NAID 4.5 (최대 5개)</label>
+        <textarea class="compact" id="panelPreciseDescription" placeholder="참조 이미지의 캐릭터 또는 대상 설명"></textarea>
+        <div class="precise-controls"><input id="panelPreciseFiles" type="file" accept="image/*" multiple><label>Strength<input id="panelPreciseStrength" type="number" min="0" max="1" step="0.05" value="0.6"></label><label>Fidelity<input id="panelPreciseFidelity" type="number" min="0" max="1" step="0.05" value="0.5"></label><label>정보 추출<input id="panelPreciseInformation" type="number" min="0" max="1" step="0.05" value="1"></label></div>
+        <div id="panelPreciseList" class="precise-list"></div>
         <button class="wide" id="savePanel">변경 적용</button>
         <button class="wide accent" id="generatePanel">✦ 이 컷 이미지 생성</button>
         <div class="reference-box"><b>REFERENCE IMAGE</b><span>클릭하거나 이미지를 드롭하세요</span><input id="referenceFile" type="file" accept="image/*"></div>

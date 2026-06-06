@@ -13,6 +13,7 @@ npm start
 ## 구현 기능
 
 - Manga Prompt 입력, 요약, JSON 프로젝트 가져오기/내보내기
+- 최대 12개의 업로드 이미지 또는 기존 컷 이미지를 Gemini가 분석해 스토리, 캐릭터, 대사와 페이지 구성을 생성
 - 캐릭터 프로필과 컷별 캐릭터 연결
 - Manga/Webtoon, 페이지 수, 페이지당 컷 수, 읽기 방향 설정
 - Gemini Lite/Deep 기반 컷별 연출, 페이지 구성, 이미지 프롬프트 생성
@@ -29,6 +30,10 @@ npm start
 키의 접두사는 제한하지 않으며 `AIza...`, `AQ...` 모두 요청에 전달합니다. 설정 창의 연결 테스트로 해당 키가 Gemini Generative Language API에서 실제로 유효한지 확인할 수 있습니다.
 
 실제 서비스에서는 브라우저에 Gemini API 키를 노출하지 말고 서버 API가 Gemini 호출을 대행하도록 변경해야 합니다.
+
+### 이미지로 스토리 작성
+
+원고 탭에서 이미지를 업로드하거나 `현재 컷 이미지 가져오기`를 누르고 순서를 조정한 뒤 `이미지 스토리 생성`을 실행합니다. 이미지는 긴 변 기준 최대 1600px JPEG로 압축되고, Gemini 멀티모달 `inlineData` 입력으로 전달됩니다. Gemini가 반환한 스토리, 캐릭터, 장면 설명, 대사와 레이아웃으로 프로젝트가 교체되며 각 입력 이미지는 대응하는 컷에 자동 배치됩니다.
 
 ## NovelAI 이미지 생성
 
@@ -57,7 +62,11 @@ $env:NAI_API_TOKEN="your-persistent-api-token"; npm start
 - NovelAI 생성 해상도는 `832×1216`, `896×1152`, `960×1088`, `1024×1024`, `1088×960`, `1152×896`, `1216×832`의 7개 옵션 중 선택하며, 모든 컷 레이아웃은 선택한 비율에 맞게 보정됩니다.
 - 각 컷은 별도 positive/negative prompt와 최대 5개의 Vibe Transfer 이미지를 사용할 수 있습니다. Vibe strength, information extracted, 정규화를 컷별로 설정합니다.
 - 캐릭터 프로필의 positive/negative prompt와 X/Y 위치는 선택된 컷의 NAI v4 character caption으로 전달됩니다.
+- 설정 탭의 NAIA 생성 설정에서 sampler, scheduler, steps, CFG, CFG rescale, VAR+를 조절할 수 있습니다.
+- 프롬프트 안에 `seed: 1234`, `resolution: 832x1216`, `cfg_scale: 5`, `cfg_rescale: 0.4`, `steps: 28`, `sampler: k_euler_ancestral`, `scheduler: native`를 넣으면 해당 컷 요청에만 적용됩니다.
+- 컷별 Img2Img를 활성화하면 현재 컷 이미지를 입력 이미지로 사용해 strength/noise 설정으로 재생성합니다.
+- NAID 4.5 모델에서는 컷별로 최대 5개의 Precise Reference 이미지, 설명, strength, fidelity, information extracted를 전달할 수 있습니다.
 
 서버는 공식 NovelAI 이미지 생성 엔드포인트 `https://image.novelai.net/ai/generate-image`를 사용합니다. 토큰을 프로젝트 파일이나 저장소에 커밋하지 마세요.
 
-NovelAI 요청 구조는 `comfyui-naia-bridge`가 연동하는 NAIA 2.0의 생성 방식에 맞춰 구성합니다. 메인/네거티브 프롬프트, v4 캐릭터 caption/위치, Vibe Transfer reference와 strength를 컷별 생성 요청에 함께 전달합니다.
+NovelAI 요청 구조는 `comfyui-naia-bridge`가 연동하는 NAIA 2.0의 생성 방식에 맞춰 구성합니다. 메인/네거티브 프롬프트, v4 캐릭터 caption/위치, Vibe Transfer, Img2Img, Precise Reference와 NAIA 생성 파라미터를 컷별 생성 요청에 함께 전달하며 일시적인 NovelAI 서버 오류는 최대 3회 재시도합니다.
