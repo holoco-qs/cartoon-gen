@@ -69,6 +69,12 @@
   opacity: 1;
 }
 
+.panel.image-drop,
+.reference-box.image-drop {
+  outline: 4px solid var(--lime);
+  outline-offset: -4px;
+}
+
 .char-position,
 .vibe-controls {
   display: flex;
