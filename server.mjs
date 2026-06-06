@@ -10,7 +10,7 @@ const defaultModel = process.env.NAI_MODEL || "nai-diffusion-4-5-full";
 const mime = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".png": "image/png" };
 
 function json(res, status, body) {
-  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
+  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
   res.end(JSON.stringify(body));
 }
 
@@ -91,7 +91,7 @@ async function generate(req, res) {
     return json(res, upstream.status, { error: message || `NovelAI request failed (${upstream.status})` });
   }
   const image = upstream.headers.get("content-type")?.includes("image/") ? response : firstZipFile(response);
-  res.writeHead(200, { "Content-Type": "image/png", "X-NAI-Seed": String(seed), "Cache-Control": "no-store" });
+  res.writeHead(200, { "Content-Type": "image/png", "X-NAI-Seed": String(seed), "Cache-Control": "no-store", "Access-Control-Allow-Origin": "*" });
   res.end(image);
 }
 
@@ -123,6 +123,10 @@ async function staticFile(req, res) {
 
 createServer(async (req, res) => {
   try {
+    if (req.method === "OPTIONS") {
+      res.writeHead(204, { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type", "Access-Control-Allow-Methods": "GET,POST,OPTIONS" });
+      return res.end();
+    }
     if (req.method === "GET" && req.url === "/api/nai/status") return json(res, 200, { configured: Boolean(serverToken), model: defaultModel });
     if (req.method === "POST" && req.url === "/api/nai/test") return await testNovelAI(req, res);
     if (req.method === "POST" && req.url === "/api/nai/generate") return await generate(req, res);

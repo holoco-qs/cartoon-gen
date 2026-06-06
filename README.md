@@ -42,6 +42,8 @@ NAI_API_TOKEN="your-persistent-api-token" npm start
 
 앱의 `API & 설정`에서 Image provider를 `NovelAI API`로 선택합니다. 입력한 키가 있으면 환경 변수보다 우선 사용합니다. 기본 모델은 `nai-diffusion-4-5-full`이며 설정에서 변경할 수 있습니다.
 
+정적 호스팅에서 앱을 연 경우 `/api/nai/*` 프록시가 없으므로 별도로 `npm start`를 실행하고 `NovelAI proxy URL`에 해당 서버 주소(예: `http://localhost:8000`)를 입력해야 합니다. 같은 Node 서버에서 앱을 열었다면 proxy URL은 비워둡니다.
+
 - `NAI Generate`: 아직 이미지가 없는 모든 컷을 순차 생성합니다.
 - `이 컷 이미지 재생성`: 선택한 만화 컷의 이미지를 즉시 새 결과로 교체합니다.
 - 컷 위의 `↻` 버튼: Editor 또는 Preview의 만화 영역에서 해당 컷을 바로 재생성합니다.
